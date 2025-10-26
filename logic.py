@@ -607,12 +607,20 @@ def fetch_airdrop_data(
         delta = cur - rcv
         pct = (cur / rcv * Decimal(100)) if rcv > 0 else Decimal(0)
         
+        # Format function to avoid scientific notation (max 2 decimal places)
+        def format_decimal(val):
+            # Round to 2 decimal places
+            rounded = round(float(val), 2)
+            # Format and remove trailing zeros
+            s = f"{rounded:.2f}".rstrip('0').rstrip('.')
+            return s if s else '0'
+        
         # Build row with base columns
         row = [
             addr,
-            f"{rcv.normalize()}",
-            f"{cur.normalize()}",
-            f"{delta.normalize()}",
+            format_decimal(rcv),
+            format_decimal(cur),
+            format_decimal(delta),
             f"{pct.quantize(Decimal('0.01'))}%"
         ]
         
@@ -620,8 +628,8 @@ def fetch_airdrop_data(
         addr_activity = activity_data.get(addr.lower(), {})
         for category in all_categories:
             category_value = addr_activity.get(category, Decimal(0))
-            category_display = (category_value / scale).normalize()
-            row.append(f"{category_display}")
+            category_display = category_value / scale
+            row.append(format_decimal(category_display))
         
         rows.append(row)
     

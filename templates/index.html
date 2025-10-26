@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Airdrop Tracker</title>
     <style>
         body{font-family:system-ui,-apple-system,sans-serif;max-width:1200px;margin:40px auto;padding:0 20px;background:#f5f5f5}
@@ -11,6 +13,7 @@
         textarea{min-height:80px;resize:vertical}
         button{background:#007bff;color:#fff;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;font-size:16px;margin-top:20px}
         button:hover{background:#0056b3}
+        button:disabled{background:#ccc;cursor:not-allowed}
         .example{font-size:12px;color:#666;margin-top:4px}
         table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
         th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}
@@ -20,37 +23,25 @@
         .status{padding:15px;background:#e7f3ff;border-left:4px solid #007bff;margin:20px 0}
         .download-btn{background:#28a745;margin-top:10px}
         .download-btn:hover{background:#218838}
-        .terminal{background:#1e1e1e;color:#0f0;padding:20px;border-radius:4px;font-family:monospace;font-size:13px;max-height:500px;overflow-y:auto;margin:20px 0;line-height:1.6}
-        .spinner{display:inline-block;width:14px;height:14px;border:2px solid #0f0;border-top:2px solid transparent;border-radius:50%;animation:spin 1s linear infinite}
-        @keyframes spin{to{transform:rotate(360deg)}}
+        .loader{border:4px solid #f3f3f3;border-top:4px solid #007bff;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .loading-text{text-align:center;color:#666;margin-top:10px;font-size:14px}
+        .faq{margin-top:40px;padding-top:30px;border-top:2px solid #e0e0e0}
+        .faq h2{color:#333;font-size:20px;margin-bottom:20px}
+        .faq-item{margin-bottom:20px}
+        .faq-question{font-weight:600;color:#007bff;margin-bottom:8px;font-size:15px}
+        .faq-answer{color:#555;line-height:1.6;font-size:14px;margin-left:10px}
+        .faq-answer code{background:#f5f5f5;padding:2px 6px;border-radius:3px;font-family:monospace;font-size:13px}
+        .faq-answer pre{background:#f5f5f5;padding:10px;border-radius:4px;overflow-x:auto;font-size:12px}
+        .faq-answer ul{margin:10px 0;padding-left:25px}
+        .faq-answer li{margin:5px 0}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 Airdrop Tracker</h1>
 
-        {% if mode == 'processing' %}
-        <h2>⚙️ Processing <span class="spinner"></span></h2>
-        <div class="terminal" id="terminal">Initializing...</div>
-        <script>
-            let lastIdx = 0;
-            const poll = setInterval(() => {
-                fetch('/poll').then(r => r.json()).then(data => {
-                    const term = document.getElementById('terminal');
-                    if(data.lines.length > lastIdx) {
-                        term.textContent = data.lines.join('\n');
-                        term.scrollTop = term.scrollHeight;
-                        lastIdx = data.lines.length;
-                    }
-                    if(data.done) {
-                        clearInterval(poll);
-                        setTimeout(() => window.location.href='/result', 500);
-                    }
-                });
-            }, 300);
-        </script>
-
-        {% elif result %}
+        {% if result %}
         <div class="status">✅ Processed {{ result.count }} addresses | {{ result.api_calls }} API calls</div>
         <h2>First 100 Rows</h2>
         <div style="overflow-x:auto">
@@ -72,7 +63,7 @@
         <br><a href="/">← Run Another</a>
 
         {% else %}
-        <form method="post" action="/run">
+        <form method="post" action="/run" id="mainForm">
             <label>Token Contract Address</label>
             <input name="token" value="0x01791f726b4103694969820be083196cc7c045ff" required>
             
@@ -85,10 +76,116 @@
             <label>Contracts & Functions JSON <span class="example">(optional)</span></label>
             <textarea name="contracts">{{ example_contracts }}</textarea>
             
-            <button type="submit">▶️ Run Operation</button>
+            <button type="submit" id="submitBtn">▶️ Run Operation</button>
         </form>
+
+        <div class="faq">
+            <h2>❓ Frequently Asked Questions</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">What is Token Decimals?</div>
+                <div class="faq-answer">
+                    <p>Token decimals define how divisible a token is. It represents the number of decimal places a token can be divided into.</p>
+                    <ul>
+                        <li><strong>Is it always 18?</strong> No! While 18 is the most common (same as ETH), tokens can have anywhere from 0 to 18+ decimals:
+                            <ul>
+                                <li>USDC & USDT: 6 decimals</li>
+                                <li>WBTC: 8 decimals</li>
+                                <li>Most ERC-20s: 18 decimals</li>
+                            </ul>
+                        </li>
+                        <li><strong>How to verify?</strong> 
+                            <ol>
+                                <li>Go to <a href="https://etherscan.io" target="_blank">Etherscan.io</a></li>
+                                <li>Paste your token contract address</li>
+                                <li>Look for "Decimals" under Token Tracker section</li>
+                            </ol>
+                        </li>
+                        <li><strong>Why it matters:</strong> If a token has 6 decimals and shows 1000000 on-chain, the actual value is 1.0 token (1000000 ÷ 10<sup>6</sup>)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">What are Transaction Hashes?</div>
+                <div class="faq-answer">
+                    <p>Transaction hashes (txhash) are unique identifiers for Ethereum transactions. This tool specifically analyzes <strong>multi-send airdrop transactions</strong> where tokens were distributed to many recipients in a single transaction.</p>
+                    <ul>
+                        <li><strong>Format:</strong> 66-character hex string starting with <code>0x</code></li>
+                        <li><strong>Example:</strong> <code>0xd237693e624f9703f9ea7e825677979e2bb3ff9dfa90d2feaedbdba1095b6421</code></li>
+                        <li><strong>How to find them:</strong>
+                            <ul>
+                                <li>Check your wallet transaction history on Etherscan</li>
+                                <li>Look for transactions that distributed tokens to multiple addresses</li>
+                                <li>Copy the transaction hash from the URL or transaction details</li>
+                            </ul>
+                        </li>
+                        <li><strong>One hash per line:</strong> Enter multiple transaction hashes, each on a new line, to analyze all airdrops together</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">How to fill Contracts & Functions JSON? (Optional)</div>
+                <div class="faq-answer">
+                    <p>This advanced feature tracks what recipients did with their airdropped tokens by analyzing their interactions with specific smart contracts.</p>
+                    
+                    <p><strong>Structure:</strong></p>
+                    <pre>{
+  "0xContractAddress": {
+    "category": "column_name",
+    "functions": ["function1", "function2"]
+  }
+}</pre>
+
+                    <p><strong>How it works:</strong></p>
+                    <ul>
+                        <li><strong>Smart Contract Address:</strong> The address of the DeFi protocol you want to track (e.g., staking contract, liquidity pool)</li>
+                        <li><strong>Category:</strong> The column name in your CSV output. This groups related activities (e.g., "staking", "liquidity", "trading")</li>
+                        <li><strong>Functions:</strong> List of function names to track. The tool sums up all token transfers matching these functions</li>
+                    </ul>
+
+                    <p><strong>Example Use Case:</strong></p>
+                    <p>You want to see how many airdrop recipients staked their tokens vs provided liquidity:</p>
+                    <pre>{
+  "0x8235c179...ac211": {
+    "category": "staking",
+    "functions": ["create_lock", "increase_amount"]
+  },
+  "0xec977f46...bd65b": {
+    "category": "liquidity", 
+    "functions": ["add_liquidity"]
+  }
+}</pre>
+                    
+                    <p><strong>Result:</strong> Your CSV will have <code>staking_value_YB</code> and <code>liquidity_value_YB</code> columns showing the total tokens each address used for those activities.</p>
+                    
+                    <p><strong>Tips:</strong></p>
+                    <ul>
+                        <li>Find contract addresses on Etherscan by looking at transaction details</li>
+                        <li>Function names are partial matches (case-insensitive)</li>
+                        <li>Leave blank to skip this analysis and just get airdrop + balance data</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         {% endif %}
     </div>
+
+    <script>
+        const form = document.getElementById('mainForm');
+        if(form) {
+            form.onsubmit = function() {
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Processing...';
+                const container = document.querySelector('.container');
+                const loader = document.createElement('div');
+                loader.innerHTML = '<div class="loader"></div><div class="loading-text">Processing airdrop data... This may take 1-2 minutes</div>';
+                container.appendChild(loader);
+            };
+        }
+    </script>
 </body>
 </html>
-
