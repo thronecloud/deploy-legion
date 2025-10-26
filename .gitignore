@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.csv
+flask_output.log
+flask.log
+config.env
+.env
+*.swp
+.DS_Store
+

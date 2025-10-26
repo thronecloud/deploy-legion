@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Airdrop Tracker</title>
+    <style>
+        body{font-family:system-ui,-apple-system,sans-serif;max-width:1200px;margin:40px auto;padding:0 20px;background:#f5f5f5}
+        .container{background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+        h1{margin:0 0 30px 0;color:#333;font-size:24px}
+        label{display:block;margin:20px 0 5px;font-weight:500;color:#555}
+        input,textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:monospace}
+        textarea{min-height:80px;resize:vertical}
+        button{background:#007bff;color:#fff;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;font-size:16px;margin-top:20px}
+        button:hover{background:#0056b3}
+        .example{font-size:12px;color:#666;margin-top:4px}
+        table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+        th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}
+        th{background:#f8f9fa;font-weight:600}
+        tr:hover{background:#f8f9fa}
+        .mono{font-family:monospace;font-size:12px}
+        .status{padding:15px;background:#e7f3ff;border-left:4px solid #007bff;margin:20px 0}
+        .download-btn{background:#28a745;margin-top:10px}
+        .download-btn:hover{background:#218838}
+        .terminal{background:#1e1e1e;color:#0f0;padding:20px;border-radius:4px;font-family:monospace;font-size:13px;max-height:500px;overflow-y:auto;margin:20px 0;line-height:1.6}
+        .spinner{display:inline-block;width:14px;height:14px;border:2px solid #0f0;border-top:2px solid transparent;border-radius:50%;animation:spin 1s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Airdrop Tracker</h1>
+
+        {% if mode == 'processing' %}
+        <h2>⚙️ Processing <span class="spinner"></span></h2>
+        <div class="terminal" id="terminal">Initializing...</div>
+        <script>
+            let lastIdx = 0;
+            const poll = setInterval(() => {
+                fetch('/poll').then(r => r.json()).then(data => {
+                    const term = document.getElementById('terminal');
+                    if(data.lines.length > lastIdx) {
+                        term.textContent = data.lines.join('\n');
+                        term.scrollTop = term.scrollHeight;
+                        lastIdx = data.lines.length;
+                    }
+                    if(data.done) {
+                        clearInterval(poll);
+                        setTimeout(() => window.location.href='/result', 500);
+                    }
+                });
+            }, 300);
+        </script>
+
+        {% elif result %}
+        <div class="status">✅ Processed {{ result.count }} addresses | {{ result.api_calls }} API calls</div>
+        <h2>First 100 Rows</h2>
+        <div style="overflow-x:auto">
+            <table>
+                <tr>
+                    {% for col in result.headers %}<th>{{ col }}</th>{% endfor %}
+                </tr>
+                {% for row in result.preview %}
+                <tr>
+                    <td class="mono">{{ row[0][:10] }}...</td>
+                    {% for val in row[1:] %}<td>{{ val }}</td>{% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <form action="/download" method="post">
+            <button class="download-btn" type="submit">⬇️ Download Full CSV</button>
+        </form>
+        <br><a href="/">← Run Another</a>
+
+        {% else %}
+        <form method="post" action="/run">
+            <label>Token Contract Address</label>
+            <input name="token" value="0x01791f726b4103694969820be083196cc7c045ff" required>
+            
+            <label>Token Decimals</label>
+            <input name="decimals" type="number" value="18" required>
+            
+            <label>Transaction Hashes <span class="example">(one per line)</span></label>
+            <textarea name="txhashes" required>{{ example_txs }}</textarea>
+            
+            <label>Contracts & Functions JSON <span class="example">(optional)</span></label>
+            <textarea name="contracts">{{ example_contracts }}</textarea>
+            
+            <button type="submit">▶️ Run Operation</button>
+        </form>
+        {% endif %}
+    </div>
+</body>
+</html>
+
